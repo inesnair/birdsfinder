@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BirdsFinder</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #f4f7f4; color: #1f2d1f; margin: 0; }
+  main { max-width: 520px; margin: 0 auto; padding: 24px 16px; }
+  h1 { margin-bottom: 4px; }
+  .muted { color: #5b6b5b; font-size: 0.9rem; }
+  button { background: #2f7d32; color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font-size: 1rem; cursor: pointer; }
+  button:disabled { background: #a5b8a5; cursor: not-allowed; }
+  img { max-width: 100%; border-radius: 10px; margin-top: 16px; display: none; }
+  .row { margin-top: 12px; }
+  .bar { background: #dfe8df; border-radius: 6px; height: 14px; overflow: hidden; }
+  .bar > div { background: #2f7d32; height: 100%; }
+  .warn { margin-top: 14px; padding: 10px; background: #fff4d6; border-radius: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🐦 BirdsFinder</h1>
+  <p class="muted">Dépose une photo d'oiseau : je te dis de quelle espèce il s'agit.</p>
+  <input type="file" id="file" accept="image/*">
+  <button id="go" disabled>Identifier</button>
+  <img id="preview" alt="Aperçu de la photo">
+  <div id="result"></div>
+  <p class="muted">Pas de photo ? Le mode chat arrive bientôt. L'API complète est documentée sur <a href="/docs">/docs</a>.</p>
+</main>
+<script>
+  const fileInput = document.getElementById("file");
+  const go = document.getElementById("go");
+  const preview = document.getElementById("preview");
+  const result = document.getElementById("result");
+
+  fileInput.addEventListener("change", () => {
+    const f = fileInput.files[0];
+    go.disabled = !f;
+    if (f) { preview.src = URL.createObjectURL(f); preview.style.display = "block"; }
+  });
+
+  go.addEventListener("click", async () => {
+    const form = new FormData();
+    form.append("file", fileInput.files[0]);
+    result.textContent = "Analyse en cours…";
+    try {
+      const response = await fetch("/predict/image", { method: "POST", body: form });
+      const data = await response.json();
+      if (!response.ok) { result.textContent = data.detail || "Erreur"; return; }
+      result.replaceChildren();
+      data.predictions.forEach((p) => {
+        const row = document.createElement("div");
+        row.className = "row";
+        const label = document.createElement("div");
+        label.textContent = p.name_fr + " — " + (p.confidence * 100).toFixed(1) + " %";
+        const bar = document.createElement("div");
+        bar.className = "bar";
+        const fill = document.createElement("div");
+        fill.style.width = (p.confidence * 100) + "%";
+        bar.appendChild(fill);
+        row.append(label, bar);
+        result.appendChild(row);
+      });
+      if (data.uncertain) {
+        const warn = document.createElement("div");
+        warn.className = "warn";
+        warn.textContent = data.suggestion;
+        result.appendChild(warn);
+      }
+    } catch (e) {
+      result.textContent = "Impossible de joindre l'API.";
+    }
+  });
+</script>
+</body>
+</html>

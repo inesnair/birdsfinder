@@ -1,0 +1,12 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      MODEL_PATH: /app/models/best.pt
+      CLASSES_JSON: /app/data/classes.json
+    # Les dossiers sont montés : tu changes de modèle sans reconstruire l'image.
+    volumes:
+      - ./models:/app/models:ro
+      - ./data:/app/data:ro

@@ -1,0 +1,42 @@
+# Format : Nom français;Nom scientifique (une espèce par ligne)
+# 40 espèces courantes en France (jardins, forêts, plans d'eau, montagne)
+Mésange charbonnière;Parus major
+Mésange bleue;Cyanistes caeruleus
+Mésange noire;Periparus ater
+Mésange nonnette;Poecile palustris
+Rouge-gorge familier;Erithacus rubecula
+Rougequeue noir;Phoenicurus ochruros
+Merle noir;Turdus merula
+Grive musicienne;Turdus philomelos
+Moineau domestique;Passer domesticus
+Pinson des arbres;Fringilla coelebs
+Verdier d'Europe;Chloris chloris
+Chardonneret élégant;Carduelis carduelis
+Bouvreuil pivoine;Pyrrhula pyrrhula
+Gros-bec casse-noyaux;Coccothraustes coccothraustes
+Pie bavarde;Pica pica
+Corneille noire;Corvus corone
+Geai des chênes;Garrulus glandarius
+Étourneau sansonnet;Sturnus vulgaris
+Troglodyte mignon;Troglodytes troglodytes
+Accenteur mouchet;Prunella modularis
+Sittelle torchepot;Sitta europaea
+Grimpereau des jardins;Certhia brachydactyla
+Tourterelle turque;Streptopelia decaocto
+Pigeon ramier;Columba palumbus
+Hirondelle rustique;Hirundo rustica
+Martinet noir;Apus apus
+Bergeronnette grise;Motacilla alba
+Pic épeiche;Dendrocopos major
+Pic vert;Picus viridis
+Buse variable;Buteo buteo
+Faucon crécerelle;Falco tinnunculus
+Héron cendré;Ardea cinerea
+Canard colvert;Anas platyrhynchos
+Cygne tuberculé;Cygnus olor
+Mouette rieuse;Chroicocephalus ridibundus
+Accenteur alpin;Prunella collaris
+Niverolle alpine;Montifringilla nivalis
+Chocard à bec jaune;Pyrrhocorax graculus
+Lagopède alpin;Lagopus muta
+Tichodrome échelette;Tichodroma muraria

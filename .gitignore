@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Données et sorties d'entraînement (reproductibles via les scripts)
+data/raw/
+runs/
+mlruns/
+
+# Divers
+.env
+.DS_Store
+.cache/
+report.xml
