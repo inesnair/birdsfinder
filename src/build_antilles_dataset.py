@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
 """
 build_antilles_dataset.py
-Construit un dataset d'images d'oiseaux des Antilles françaises (Guadeloupe, Martinique)
-à partir de l'API GBIF (observations iNaturalist "Research Grade" avec photos sous licence ouverte).
+Construit un dataset d'images d'oiseaux à partir de l'API GBIF
+(observations iNaturalist "Research Grade" avec photos sous licence ouverte).
+
+Par défaut : Antilles françaises (Guadeloupe GP, Martinique MQ).
+Avec --countries : n'importe quels pays (codes à 2 lettres), par exemple FR pour la France.
 
 Deux étapes :
   1) count    : compte les photos disponibles par espèce -> species_counts.csv
   2) download : télécharge les images des espèces retenues -> images/<espece>/*.jpg + metadata.csv
 
-Exemples :
-  python build_antilles_dataset.py count --out data_antilles --fr-names
-  python build_antilles_dataset.py download --out data_antilles --min-photos 60 --per-species 150
+Exemples Antilles (inchangés) :
+  python build_antilles_dataset.py count --out data_antilles --fr-names --nc
+  python build_antilles_dataset.py download --out data_antilles --min-photos 100 --per-species 150 --nc
+
+Exemple Europe (les 31 espèces les plus photographiées de France) :
+  python build_antilles_dataset.py count --out data_europe --countries FR --fr-names --nc
+  python build_antilles_dataset.py download --out data_europe --top-n 31 --per-species 150 --nc
 
 Dépendances : pip install requests pillow
 """
@@ -34,7 +41,9 @@ except ImportError:
 GBIF = "https://api.gbif.org/v1"
 INAT_DATASET = "50c9509d-22c7-4a22-a47d-8c48425ef4a7"  # iNaturalist Research-grade Observations
 AVES = 212                                             # taxonKey de la classe Aves (oiseaux)
-COUNTRIES = ["GP", "MQ"]                               # Guadeloupe, Martinique
+DEFAULT_COUNTRIES = ["GP", "MQ"]                       # Guadeloupe, Martinique
+COUNTRY_COLUMNS = {"GP": "guadeloupe", "MQ": "martinique"}  # noms de colonnes conservés pour les Antilles
+CONFIG_NAME = "count_config.json"                      # pays utilisés au comptage, relus au téléchargement
 OPEN_LICENSES = ["CC0_1_0", "CC_BY_4_0"]
 NC_LICENSES = ["CC_BY_NC_4_0"]
 
@@ -63,6 +72,14 @@ def get(url, params=None, retries=4):
 
 def licenses(allow_nc):
     return OPEN_LICENSES + (NC_LICENSES if allow_nc else [])
+
+
+def parse_countries(text):
+    codes = [c.strip().upper() for c in text.split(",") if c.strip()]
+    if not codes or any(len(c) != 2 or not c.isalpha() for c in codes):
+        sys.exit(f"--countries attend des codes pays à 2 lettres séparés par des virgules "
+                 f"(ex. FR ou GP,MQ) ; reçu : « {text} »")
+    return codes
 
 
 def base_params(countries, lic):
@@ -133,28 +150,31 @@ def cmd_count(args):
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     lic = licenses(args.nc)
+    countries = parse_countries(args.countries) if args.countries else list(DEFAULT_COUNTRIES)
 
     per_country = {}
-    for c in COUNTRIES:
+    for c in countries:
         per_country[c] = facet_counts(c, lic)
         print(f"{c} : {sum(per_country[c].values())} observations avec photo, {len(per_country[c])} espèces")
 
     keys = sorted(set().union(*[set(d) for d in per_country.values()]))
+    if not keys:
+        sys.exit("Aucune observation trouvée : vérifie les codes pays et les licences (--nc).")
     names = lookup_names(keys, out, args.workers, args.fr_names)
 
     rows = []
     for k in keys:
         n = names.get(str(k), {})
-        gp, mq = per_country["GP"].get(k, 0), per_country["MQ"].get(k, 0)
-        rows.append({
+        row = {
             "species_key": k,
             "canonical_name": n.get("canonical", ""),
             "english_name": n.get("english", ""),
             "french_name": n.get("french", ""),
-            "guadeloupe": gp,
-            "martinique": mq,
-            "total": gp + mq,
-        })
+        }
+        for c in countries:
+            row[COUNTRY_COLUMNS.get(c, c.lower())] = per_country[c].get(k, 0)
+        row["total"] = sum(per_country[c].get(k, 0) for c in countries)
+        rows.append(row)
     rows.sort(key=lambda r: -r["total"])
 
     csv_path = out / "species_counts.csv"
@@ -162,6 +182,8 @@ def cmd_count(args):
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         w.writeheader()
         w.writerows(rows)
+    # On mémorise les pays utilisés : l'étape download les relit toute seule.
+    (out / CONFIG_NAME).write_text(json.dumps({"countries": countries, "nc": args.nc}), encoding="utf-8")
 
     print(f"\n=> {csv_path}")
     print("\nNombre d'espèces exploitables selon le seuil de photos par espèce :")
@@ -169,15 +191,16 @@ def cmd_count(args):
         print(f"  >= {t:>3} photos : {sum(1 for r in rows if r['total'] >= t)} espèces")
     print("\nTop 10 :")
     for r in rows[:10]:
-        print(f"  {r['total']:>5}  {r['canonical_name']}  (GP {r['guadeloupe']} / MQ {r['martinique']})")
+        detail = " / ".join(f"{c} {per_country[c].get(r['species_key'], 0)}" for c in countries)
+        print(f"  {r['total']:>5}  {r['canonical_name']}  ({detail})")
 
 
 # ----------------------------------------------------------------------------- étape 2 : download
-def collect_candidates(species_key, lic, allow_nc, per_species):
+def collect_candidates(species_key, lic, allow_nc, per_species, countries):
     """Liste de photos candidates (1 photo max par observation pour limiter les quasi-doublons)."""
     found, offset = [], 0
     while len(found) < per_species:
-        params = {**base_params(COUNTRIES, lic), "speciesKey": species_key, "limit": 300, "offset": offset}
+        params = {**base_params(countries, lic), "speciesKey": species_key, "limit": 300, "offset": offset}
         data = get(f"{GBIF}/occurrence/search", params)
         results = data.get("results", [])
         for occ in results:
@@ -230,17 +253,33 @@ def cmd_download(args):
     if not csv_path.exists():
         sys.exit("species_counts.csv introuvable : lance d'abord la commande 'count'.")
     lic = licenses(args.nc)
-    excluded = {e.strip().lower() for e in args.exclude.split(",") if e.strip()}
 
+    # Pays : l'option --countries, sinon ceux du comptage (count_config.json), sinon les Antilles.
+    cfg_path = out / CONFIG_NAME
+    cfg = json.loads(cfg_path.read_text(encoding="utf-8")) if cfg_path.exists() else {}
+    countries = parse_countries(args.countries) if args.countries else cfg.get("countries", list(DEFAULT_COUNTRIES))
+    if cfg and cfg.get("countries") != countries:
+        print(f"⚠️  Pays différents du comptage ({cfg.get('countries')} -> {countries}) : "
+              f"les totaux de species_counts.csv ne correspondent plus.")
+    if cfg.get("nc") and not args.nc:
+        print("⚠️  Le comptage utilisait --nc mais pas ce téléchargement : ajoute --nc pour garder les mêmes photos.")
+    print(f"Pays : {', '.join(countries)} | licences : {', '.join(lic)}")
+
+    excluded = {e.strip().lower() for e in args.exclude.split(",") if e.strip()}
     with open(csv_path, encoding="utf-8") as f:
         species = [r for r in csv.DictReader(f)
                    if int(r["total"]) >= args.min_photos and r["canonical_name"].lower() not in excluded]
-    print(f"{len(species)} espèces retenues (>= {args.min_photos} photos).")
+    species.sort(key=lambda r: -int(r["total"]))
+    if args.top_n:
+        species = species[:args.top_n]
+        print(f"{len(species)} espèces retenues (les {args.top_n} plus photographiées, au moins {args.min_photos} photos).")
+    else:
+        print(f"{len(species)} espèces retenues (>= {args.min_photos} photos).")
 
     meta_rows, failed = [], 0
     for i, sp in enumerate(species, 1):
         name = sp["canonical_name"]
-        cands = collect_candidates(int(sp["species_key"]), lic, args.nc, args.per_species)
+        cands = collect_candidates(int(sp["species_key"]), lic, args.nc, args.per_species, countries)
         folder = out / "images" / slug(name)
         with ThreadPoolExecutor(max_workers=args.workers) as ex:
             futs = {}
@@ -273,11 +312,12 @@ def cmd_download(args):
 
 # ----------------------------------------------------------------------------- CLI
 def main():
-    p = argparse.ArgumentParser(description="Dataset d'oiseaux des Antilles françaises via GBIF/iNaturalist")
+    p = argparse.ArgumentParser(description="Dataset d'oiseaux (Antilles françaises par défaut) via GBIF/iNaturalist")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     c = sub.add_parser("count", help="compter les photos disponibles par espèce")
     c.add_argument("--out", default="data_antilles")
+    c.add_argument("--countries", default=None, help="codes pays séparés par des virgules (défaut : GP,MQ ; ex. FR)")
     c.add_argument("--nc", action="store_true", help="accepter aussi CC-BY-NC (usage non commercial)")
     c.add_argument("--fr-names", action="store_true", help="récupérer les noms français (plus d'appels API)")
     c.add_argument("--workers", type=int, default=8)
@@ -285,7 +325,9 @@ def main():
 
     d = sub.add_parser("download", help="télécharger les images des espèces retenues")
     d.add_argument("--out", default="data_antilles")
+    d.add_argument("--countries", default=None, help="par défaut : ceux utilisés au comptage")
     d.add_argument("--min-photos", type=int, default=60, help="seuil minimal de photos par espèce")
+    d.add_argument("--top-n", type=int, default=None, help="ne garder que les N espèces les plus photographiées")
     d.add_argument("--per-species", type=int, default=150, help="nombre max de photos par espèce")
     d.add_argument("--size", default="large", choices=["original", "large", "medium"], help="taille source iNaturalist")
     d.add_argument("--max-side", type=int, default=640, help="redimensionnement (plus grand côté, en pixels)")
