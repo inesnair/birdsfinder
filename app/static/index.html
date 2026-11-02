@@ -15,6 +15,8 @@
   .row { margin-top: 12px; }
   .bar { background: #dfe8df; border-radius: 6px; height: 14px; overflow: hidden; }
   .bar > div { background: #2f7d32; height: 100%; }
+  select { font-size: 1rem; padding: 8px; border-radius: 8px; border: 1px solid #b9c9b9; background: #fff; }
+  .zone { margin: 14px 0; }
   .warn { margin-top: 14px; padding: 10px; background: #fff4d6; border-radius: 8px; }
 </style>
 </head>
@@ -22,6 +24,10 @@
 <main>
   <h1>🐦 BirdsFinder</h1>
   <p class="muted">Dépose une photo d'oiseau : je te dis de quelle espèce il s'agit.</p>
+  <div class="zone">
+    <label for="region">Zone de l'oiseau : </label>
+    <select id="region"></select>
+  </div>
   <input type="file" id="file" accept="image/*">
   <button id="go" disabled>Identifier</button>
   <img id="preview" alt="Aperçu de la photo">
@@ -33,6 +39,19 @@
   const go = document.getElementById("go");
   const preview = document.getElementById("preview");
   const result = document.getElementById("result");
+  const regionSelect = document.getElementById("region");
+
+  // Liste des zones (Antilles / Europe) fournie par l'API ; les zones sans modèle sont grisées.
+  fetch("/regions").then((r) => r.json()).then((regions) => {
+    regions.forEach((r) => {
+      const option = document.createElement("option");
+      option.value = r.id;
+      option.textContent = r.label + (r.model_file_found ? "" : " (modèle absent)");
+      option.disabled = !r.model_file_found;
+      option.selected = r.default;
+      regionSelect.appendChild(option);
+    });
+  }).catch(() => { regionSelect.parentElement.style.display = "none"; });
 
   fileInput.addEventListener("change", () => {
     const f = fileInput.files[0];
@@ -45,10 +64,15 @@
     form.append("file", fileInput.files[0]);
     result.textContent = "Analyse en cours…";
     try {
-      const response = await fetch("/predict/image", { method: "POST", body: form });
+      const query = regionSelect.value ? "?region=" + encodeURIComponent(regionSelect.value) : "";
+      const response = await fetch("/predict/image" + query, { method: "POST", body: form });
       const data = await response.json();
       if (!response.ok) { result.textContent = data.detail || "Erreur"; return; }
       result.replaceChildren();
+      const used = document.createElement("div");
+      used.className = "muted";
+      used.textContent = "Modèle utilisé : " + (regionSelect.selectedOptions[0] ? regionSelect.selectedOptions[0].textContent : data.region);
+      result.appendChild(used);
       data.predictions.forEach((p) => {
         const row = document.createElement("div");
         row.className = "row";

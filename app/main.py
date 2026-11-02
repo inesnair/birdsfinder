@@ -4,7 +4,7 @@ import logging
 import time
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 from PIL import Image, UnidentifiedImageError
@@ -24,7 +24,7 @@ app = FastAPI(
 STATIC_DIR = Path(__file__).parent / "static"
 
 # Compteurs simples pour le monitoring (consultables sur /stats).
-STATS = {"image_requests": 0, "uncertain": 0, "total_latency_ms": 0.0}
+STATS = {"image_requests": 0, "uncertain": 0, "total_latency_ms": 0.0, "by_region": {}}
 
 
 # ---------- Schémas (contrat de l'API) ----------
@@ -36,6 +36,7 @@ class SpeciesScore(BaseModel):
 
 
 class ImagePredictionResponse(BaseModel):
+    region: str  # zone dont le modèle a répondu (antilles, europe)
     predictions: list[SpeciesScore]
     uncertain: bool
     suggestion: str | None = None
@@ -46,10 +47,20 @@ class ChatRequest(BaseModel):
     message: str
 
 
-# ---------- Dépendance : le modèle (remplaçable dans les tests) ----------
-def predictor_dependency():
+# ---------- Dépendances : la zone et son modèle (remplaçables dans les tests) ----------
+def region_dependency(region: str | None = Query(None, description="antilles ou europe")) -> str:
+    region = region or config.DEFAULT_REGION
+    if region not in config.REGION_LABELS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Zone inconnue : « {region} ». Zones disponibles : {', '.join(config.REGION_LABELS)}.",
+        )
+    return region
+
+
+def predictor_dependency(region: str = Depends(region_dependency)):
     try:
-        return inference.get_predictor()
+        return inference.get_predictor(region)
     except inference.ModelNotAvailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
@@ -62,7 +73,26 @@ def home():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "model_file_found": config.MODEL_PATH.exists()}
+    found = {region: config.region_files(region)[0].exists() for region in config.REGION_LABELS}
+    return {
+        "status": "ok",
+        "model_file_found": found.get(config.DEFAULT_REGION, False),  # modèle de la zone par défaut
+        "regions": found,
+    }
+
+
+@app.get("/regions")
+def regions():
+    """Zones proposées dans l'interface, et si leur modèle est présent sur le serveur."""
+    return [
+        {
+            "id": region,
+            "label": label,
+            "model_file_found": config.region_files(region)[0].exists(),
+            "default": region == config.DEFAULT_REGION,
+        }
+        for region, label in config.REGION_LABELS.items()
+    ]
 
 
 @app.get("/stats")
@@ -72,12 +102,20 @@ def stats():
         "image_requests": n,
         "uncertain_predictions": STATS["uncertain"],
         "avg_latency_ms": round(STATS["total_latency_ms"] / n, 1) if n else None,
+        "by_region": STATS["by_region"],
     }
 
 
 @app.post("/predict/image", response_model=ImagePredictionResponse)
-async def predict_image(file: UploadFile = File(...), predictor=Depends(predictor_dependency)):
-    """Use case 1 : une photo -> les espèces les plus probables avec un pourcentage de confiance."""
+async def predict_image(
+    file: UploadFile = File(...),
+    region: str = Depends(region_dependency),
+    predictor=Depends(predictor_dependency),
+):
+    """Use case 1 : une photo -> les espèces les plus probables avec un pourcentage de confiance.
+
+    `?region=antilles` ou `?region=europe` choisit le modèle (par défaut : DEFAULT_REGION).
+    """
     if not (file.content_type or "").startswith("image/"):
         raise HTTPException(status_code=400, detail="Le fichier doit être une image (jpg, png...).")
     data = await file.read()
@@ -97,10 +135,12 @@ async def predict_image(file: UploadFile = File(...), predictor=Depends(predicto
     STATS["image_requests"] += 1
     STATS["uncertain"] += int(uncertain)
     STATS["total_latency_ms"] += latency_ms
-    logger.info("predict top1=%s conf=%.3f latency_ms=%.0f", predictions[0].species_id,
+    STATS["by_region"][region] = STATS["by_region"].get(region, 0) + 1
+    logger.info("predict region=%s top1=%s conf=%.3f latency_ms=%.0f", region, predictions[0].species_id,
                 predictions[0].confidence, latency_ms)
 
     return ImagePredictionResponse(
+        region=region,
         predictions=[
             SpeciesScore(species_id=p.species_id, name_fr=p.name_fr,
                          scientific_name=p.scientific_name, confidence=round(p.confidence, 4))

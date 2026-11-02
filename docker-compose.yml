@@ -6,6 +6,8 @@ services:
     environment:
       MODEL_PATH: /app/models/best.pt
       CLASSES_JSON: /app/data/classes.json
+      MODEL_PATH_EUROPE: /app/models/best_europe.pt
+      CLASSES_JSON_EUROPE: /app/data/classes_europe.json
     # Les dossiers sont montés : tu changes de modèle sans reconstruire l'image.
     volumes:
       - ./models:/app/models:ro

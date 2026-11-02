@@ -60,15 +60,16 @@ class ImagePredictor:
         return results
 
 
-@lru_cache(maxsize=1)
-def get_predictor() -> ImagePredictor:
-    """Charge le modèle une seule fois (au premier appel), puis le garde en mémoire."""
-    if not config.MODEL_PATH.exists():
+@lru_cache(maxsize=None)
+def get_predictor(region: str) -> ImagePredictor:
+    """Charge le modèle d'une zone au premier appel, puis le garde en mémoire (un par zone)."""
+    model_path, classes_json = config.region_files(region)
+    if not model_path.exists():
         raise ModelNotAvailable(
-            f"Modèle introuvable : {config.MODEL_PATH}. Voir le README, section « Modèle »."
+            f"Modèle introuvable : {model_path}. Voir le README, section « Modèle »."
         )
     try:
-        return ImagePredictor(config.MODEL_PATH, config.CLASSES_JSON)
+        return ImagePredictor(model_path, classes_json)
     except Exception as exc:  # fichier corrompu, pointeur Git LFS non téléchargé, torch absent...
         raise ModelNotAvailable(
             f"Impossible de charger le modèle ({exc}). Vérifie Git LFS et l'installation de torch."

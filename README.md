@@ -29,23 +29,34 @@ Ouvre ensuite **http://localhost:8000** (page de démo) ou **http://localhost:80
 
 ## Modèle
 
-L'API lit `models/best.pt` (chemin modifiable avec la variable `MODEL_PATH`). Sans ce fichier, elle démarre quand même mais `/predict/image` répond **503** avec un message explicite.
+L'API sait utiliser **un modèle par zone géographique** (chargé au premier usage) :
 
-Pour obtenir ce fichier : entraîner le modèle (voir `docs/guide_deep_learning.md`), puis `cp runs/<modèle>/best.pt models/best.pt` et `data/classes.json` à jour.
+| Zone (`region`) | Modèle | Noms des espèces | Variables d'environnement |
+|---|---|---|---|
+| `antilles` (par défaut) | `models/best.pt` | `data/classes.json` | `MODEL_PATH`, `CLASSES_JSON` |
+| `europe` | `models/best_europe.pt` | `data/classes_europe.json` | `MODEL_PATH_EUROPE`, `CLASSES_JSON_EUROPE` |
+
+Zone par défaut modifiable avec `DEFAULT_REGION`. Une zone sans fichier modèle répond **503** avec un message explicite, sans empêcher l'autre de fonctionner.
+
+Pour obtenir ces fichiers : entraîner le modèle (voir `docs/guide_deep_learning.md`), puis par exemple
+`cp runs_europe/convnext_tiny/best.pt models/best_europe.pt`, et `data/classes_europe.json` (généré par `python -m src.make_classes_json ... --out data/classes_europe.json`).
+
+⚠️ Chaque modèle ne connaît que **ses 31 espèces** : une photo d'un oiseau d'une autre zone donnera quand même une réponse, éventuellement avec une confiance trompeuse. Il faut choisir la bonne zone.
 
 ## API
 
 | Route | Description |
 |---|---|
-| `GET /health` | État du service (+ présence du fichier modèle) |
-| `POST /predict/image` | Photo (multipart `file`) → top-3 espèces, confiance, drapeau `uncertain` |
+| `GET /health` | État du service (+ présence des fichiers modèles, par zone) |
+| `GET /regions` | Zones proposées (Antilles, Europe) et disponibilité de leur modèle |
+| `POST /predict/image?region=europe` | Photo (multipart `file`) → top-3 espèces, confiance, drapeau `uncertain` (`region` optionnel : `antilles` ou `europe`) |
 | `POST /chat` | Identification par description (**501 pour l'instant**) |
-| `GET /stats` | Compteurs simples : nb de requêtes, prédictions incertaines, latence moyenne |
+| `GET /stats` | Compteurs simples : nb de requêtes (total et par zone), prédictions incertaines, latence moyenne |
 
 Exemple :
 
 ```bash
-curl -X POST http://localhost:8000/predict/image -F "file=@ma_photo.jpg"
+curl -X POST "http://localhost:8000/predict/image?region=europe" -F "file=@ma_photo.jpg"
 ```
 
 Quand la confiance du meilleur résultat est inférieure à `CONFIDENCE_THRESHOLD` (0,5 par défaut), la réponse contient `"uncertain": true` et suggère de passer en mode chat.

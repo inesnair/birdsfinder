@@ -92,6 +92,46 @@ def test_stats_count_requests(client):
     assert client.get("/stats").json()["image_requests"] == before + 1
 
 
+def test_response_contains_default_region(client):
+    use_fake(0.9)
+    response = client.post("/predict/image", files={"file": ("oiseau.png", png_bytes(), "image/png")})
+    assert response.json()["region"] == config.DEFAULT_REGION
+
+
+def test_predict_with_europe_region(client):
+    use_fake(0.9)
+    response = client.post("/predict/image?region=europe", files={"file": ("oiseau.png", png_bytes(), "image/png")})
+    assert response.status_code == 200
+    assert response.json()["region"] == "europe"
+    assert STATS["by_region"]["europe"] >= 1
+
+
+def test_unknown_region_is_rejected(client):
+    use_fake(0.9)
+    response = client.post("/predict/image?region=mars", files={"file": ("oiseau.png", png_bytes(), "image/png")})
+    assert response.status_code == 400
+    assert "Zone inconnue" in response.json()["detail"]
+
+
+def test_europe_model_missing_gives_503_but_antilles_unaffected(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(config, "MODEL_PATH_EUROPE", tmp_path / "absent_europe.pt")
+    inference.get_predictor.cache_clear()
+    response = client.post("/predict/image?region=europe", files={"file": ("oiseau.png", png_bytes(), "image/png")})
+    assert response.status_code == 503
+    assert "absent_europe.pt" in response.json()["detail"]
+
+
+def test_regions_lists_availability(client, monkeypatch, tmp_path):
+    present = tmp_path / "antilles.pt"
+    present.write_bytes(b"x")
+    monkeypatch.setattr(config, "MODEL_PATH", present)
+    monkeypatch.setattr(config, "MODEL_PATH_EUROPE", tmp_path / "absent.pt")
+    body = {r["id"]: r for r in client.get("/regions").json()}
+    assert body["antilles"]["model_file_found"] is True
+    assert body["europe"]["model_file_found"] is False
+    assert sum(r["default"] for r in body.values()) == 1
+
+
 def test_chat_not_implemented_yet(client):
     response = client.post("/chat", json={"message": "j'ai vu un oiseau bleu"})
     assert response.status_code == 501
