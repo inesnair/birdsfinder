@@ -19,6 +19,12 @@ REGION_LABELS = {
 }
 DEFAULT_REGION = os.getenv("DEFAULT_REGION", "antilles")
 
+# Front React compilé (frontend/dist) : servi par l'API s'il existe (démo Colab / local)
+FRONTEND_DIST = Path(os.getenv("FRONTEND_DIST", BASE_DIR / "frontend" / "dist"))
+# Origines autorisées à appeler l'API depuis un autre site (ex. "https://inesnair.github.io"), séparées par des virgules
+CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
+MODEL_VERSION = os.getenv("MODEL_VERSION", "api-locale")
+
 TOP_K = int(os.getenv("TOP_K", "3"))                                   # nb d'espèces renvoyées
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.5"))  # en dessous : "pas sûr"
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "10"))

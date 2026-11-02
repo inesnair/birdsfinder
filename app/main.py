@@ -1,12 +1,15 @@
 """API BirdsFinder (FastAPI) : identification d'oiseaux par photo (et bientôt par chat)."""
 import io
+import json
 import logging
 import time
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.concurrency import run_in_threadpool
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel
 
@@ -22,6 +25,15 @@ app = FastAPI(
 )
 
 STATIC_DIR = Path(__file__).parent / "static"
+
+if config.CORS_ORIGINS:
+    app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGINS, allow_methods=["GET", "POST"], allow_headers=["*"])
+
+# Front React compilé (npm run build) : servi par l'API, sinon page de démo historique.
+if (config.FRONTEND_DIST / "index.html").exists():
+    for sub in ("assets", "ort"):
+        if (config.FRONTEND_DIST / sub).is_dir():
+            app.mount(f"/{sub}", StaticFiles(directory=config.FRONTEND_DIST / sub), name=f"front-{sub}")
 
 # Compteurs simples pour le monitoring (consultables sur /stats).
 STATS = {"image_requests": 0, "uncertain": 0, "total_latency_ms": 0.0, "by_region": {}}
@@ -68,7 +80,43 @@ def predictor_dependency(region: str = Depends(region_dependency)):
 # ---------- Routes ----------
 @app.get("/", include_in_schema=False)
 def home():
-    return FileResponse(STATIC_DIR / "index.html")
+    front = config.FRONTEND_DIST / "index.html"
+    return FileResponse(front if front.exists() else STATIC_DIR / "index.html")
+
+
+@app.get("/favicon.svg", include_in_schema=False)
+def favicon():
+    icon = config.FRONTEND_DIST / "favicon.svg"
+    if not icon.exists():
+        raise HTTPException(status_code=404)
+    return FileResponse(icon)
+
+
+@app.get("/manifest")
+def manifest():
+    """Même format que manifest.json publié sur le Hugging Face Hub : utilisé par le front en mode "api"."""
+    regions_out = {}
+    for region, label in config.REGION_LABELS.items():
+        model_path, classes_json = config.region_files(region)
+        if not model_path.exists() or not classes_json.exists():
+            continue
+        names = json.loads(classes_json.read_text(encoding="utf-8"))
+        # Ordre des classes = ordre alphabétique des dossiers (ImageFolder), comme à l'entraînement
+        classes = [
+            {"id": slug, "fr": names[slug].get("fr", slug), "sci": names[slug].get("sci") or slug.replace("_", " ")}
+            for slug in sorted(names)
+        ]
+        regions_out[region] = {
+            "label": label,
+            "version": config.MODEL_VERSION,
+            "architecture": "pytorch",
+            "img_size": 224,
+            "resize": 256,
+            "mean": [0.485, 0.456, 0.406],
+            "std": [0.229, 0.224, 0.225],
+            "classes": classes,
+        }
+    return {"updated_at": None, "regions": regions_out}
 
 
 @app.get("/health")

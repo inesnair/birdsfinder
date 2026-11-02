@@ -132,6 +132,24 @@ def test_regions_lists_availability(client, monkeypatch, tmp_path):
     assert sum(r["default"] for r in body.values()) == 1
 
 
+def test_manifest_lists_regions_with_models(client, monkeypatch, tmp_path):
+    model = tmp_path / "europe.pt"
+    model.write_bytes(b"x")
+    classes = tmp_path / "classes_europe.json"
+    classes.write_text(
+        '{"Turdus_merula": {"fr": "Merle noir", "sci": "Turdus merula"}, "Erithacus_rubecula": {"fr": "Rougegorge familier"}}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(config, "MODEL_PATH_EUROPE", model)
+    monkeypatch.setattr(config, "CLASSES_JSON_EUROPE", classes)
+    monkeypatch.setattr(config, "MODEL_PATH", tmp_path / "absent.pt")
+    body = client.get("/manifest").json()
+    assert list(body["regions"]) == ["europe"]
+    europe = body["regions"]["europe"]
+    assert [c["id"] for c in europe["classes"]] == ["Erithacus_rubecula", "Turdus_merula"]  # ordre alphabétique
+    assert europe["classes"][0]["sci"] == "Erithacus rubecula"
+
+
 def test_chat_not_implemented_yet(client):
     response = client.post("/chat", json={"message": "j'ai vu un oiseau bleu"})
     assert response.status_code == 501

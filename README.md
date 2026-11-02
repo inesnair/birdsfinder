@@ -7,6 +7,24 @@ Application d'identification d'oiseaux, avec deux modes d'entrée :
 
 Projet réalisé pour la formation Développeur Concepteur IA (RNCP38616, blocs 03 et 05).
 
+## Version bêta en ligne (gratuite)
+
+```
+Colab : train_cnn → export_onnx (contrôle int8 vs PyTorch) → publish_model ──► Hugging Face Hub (modèles versionnés + manifest.json)
+                                                                                         │
+GitHub (push sur main) ──► GitHub Actions ──► GitHub Pages : front React ◄───────────────┘  la reconnaissance tourne
+                                                     │                                       dans le navigateur
+                                                     └──► Supabase (UE, Paris) : comptes Google, ornithotèque, corrections
+```
+
+- **Reconnaissance dans le navigateur** (ONNX Runtime Web) : la photo ne quitte pas l'appareil.
+- **Nouveau modèle en ligne sans redéploiement** : `publish_model` met à jour `manifest.json`, l'appli le relit au chargement ; retour arrière avec `--rollback`.
+- **Comptes et données personnelles** dans Supabase, protégés par des règles Row Level Security (`supabase/schema.sql`).
+- **Mode démo** sans Supabase : compte fictif, données gardées sur l'appareil (plan B de soutenance).
+- L'API FastAPI reste disponible pour la démo Colab / Docker (`/manifest`, `/predict/image?region=`).
+
+Mise en place pas à pas : [`docs/guide_beta.md`](docs/guide_beta.md). RGPD : [`docs/rgpd/registre_traitements.md`](docs/rgpd/registre_traitements.md).
+
 ## Démarrage rapide
 
 ### Option A : Docker (recommandé)
@@ -85,7 +103,10 @@ Les tests de l'API utilisent un prédicteur factice (aucun modèle requis). Un t
 
 ```
 app/            API FastAPI (main.py, inference.py, config.py, static/index.html)
-src/            entraînement : download_data.py, train_cnn.py, predict.py, common.py
+frontend/       application React (Vite) : identification, ornithotèque, corrections, pages RGPD
+src/            entraînement : build_antilles_dataset.py, train_cnn.py, predict.py, common.py
+                mise en production : export_onnx.py, publish_model.py ; administration : supabase_admin.py
+supabase/       schema.sql (tables, règles de sécurité RLS, stockage, suppression de compte)
 models/         modèles entraînés (Git LFS)
 data/           species.txt, classes.json, credits.csv (les images ne sont pas versionnées)
 reports/        courbes, matrices de confusion, métriques (preuves pour le livret)
@@ -100,7 +121,7 @@ docs/           guides
 | Bloc 05 C1 : données non structurées → numériques | `src/train_cnn.py` (transformations), `src/common.py` | ✅ code prêt |
 | Bloc 05 C2 : choix de l'architecture profonde | `reports/` (tableau comparatif à produire) | ⏳ à faire |
 | Bloc 05 C3 : entraînement, loss | `src/train_cnn.py`, courbes dans `reports/` | ⏳ à lancer |
-| Bloc 05 C4 : déploiement MLOps | `Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml`, `app/` (`/stats`, logs) | ✅ socle prêt |
+| Bloc 05 C4 : déploiement MLOps | `src/export_onnx.py` (packaging + contrôle de non-régression), `src/publish_model.py` (versionnement, rollback), `.github/workflows/` (CI + déploiement), `frontend/`, `Dockerfile`, `app/` (`/stats`, logs) | ✅ bêta |
 | Bloc 03 C1–C3 : ML classique | à venir (mode chat) | ⏳ à faire |
 
 ## Données et licences
