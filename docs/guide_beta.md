@@ -14,6 +14,15 @@ Remplace `TON_COMPTE_HF` par ton identifiant Hugging Face et `inesnair` par ton 
 2. Profil > Settings > Access Tokens > **Create new token**, type **Write**. Copie-le.
 3. Dans Colab : icône **clé** (Secrets) à gauche > **Add new secret** : nom `HF_TOKEN`, valeur = le jeton, active « Notebook access ».
 
+**À chaque session Colab**, avant les commandes de publication (les commandes `!python` ne voient pas
+les secrets directement) :
+
+```python
+import os
+from google.colab import userdata
+os.environ["HF_TOKEN"] = userdata.get("HF_TOKEN")
+```
+
 **À chaque nouveau modèle** (les photos d'entraînement doivent être dans le dossier `--data`, pour le contrôle sur le jeu de test) :
 
 ```python
@@ -50,7 +59,8 @@ Adresse à retenir pour l'étape 3 : `https://huggingface.co/TON_COMPTE_HF/birds
 2. **SQL Editor** > New query > colle tout `supabase/schema.sql` > **Run**.
 3. **Project Settings > API** : note `Project URL` et la clé **anon public**.
    La clé **service_role** ne va JAMAIS dans le front ni sur GitHub : uniquement dans les secrets Colab
-   (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) pour `src/supabase_admin.py`.
+   (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) pour `src/supabase_admin.py`, chargés comme `HF_TOKEN` :
+   `os.environ["SUPABASE_URL"] = userdata.get("SUPABASE_URL")` (idem pour la clé).
 
 ### Connexion Google
 1. console.cloud.google.com > nouveau projet « BirdsFinder ».

@@ -87,7 +87,10 @@ def hf_token() -> str:
         except Exception:
             token = None
     if not token:
-        raise SystemExit("Jeton introuvable : ajoute HF_TOKEN (droit « write ») dans les secrets Colab ou l'environnement.")
+        raise SystemExit(
+            "Jeton introuvable. Les commandes !python ne voient pas les secrets Colab : dans une cellule du notebook, lance\n"
+            "  import os; from google.colab import userdata; os.environ['HF_TOKEN'] = userdata.get('HF_TOKEN')"
+        )
     return token
 
 
@@ -102,7 +105,7 @@ def read_manifest(api, repo: str) -> dict:
 
 def upload_json(api, repo: str, data, name: str, message: str):
     with tempfile.TemporaryDirectory() as tmp:
-        p = Path(tmp) / name
+        p = Path(tmp) / Path(name).name  # fichier local à plat ; son chemin dans le dépôt est path_in_repo
         p.write_text(data if isinstance(data, str) else json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
         api.upload_file(path_or_fileobj=str(p), path_in_repo=name, repo_id=repo, repo_type="model", commit_message=message)
 

@@ -35,7 +35,10 @@ def secret(name: str) -> str:
         except Exception:
             value = None
     if not value:
-        raise SystemExit(f"{name} introuvable (secrets Colab ou variable d'environnement).")
+        raise SystemExit(
+            f"{name} introuvable. Les commandes !python ne voient pas les secrets Colab : dans une cellule du notebook, lance\n"
+            f"  import os; from google.colab import userdata; os.environ['{name}'] = userdata.get('{name}')"
+        )
     return value
 
 
