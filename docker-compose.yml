@@ -8,7 +8,12 @@ services:
       CLASSES_JSON: /app/data/classes.json
       MODEL_PATH_EUROPE: /app/models/best_europe.pt
       CLASSES_JSON_EUROPE: /app/data/classes_europe.json
-    # Les dossiers sont montés : tu changes de modèle sans reconstruire l'image.
+      SERVING_DIR: /app/serving
+      FRONTEND_DIST: /app/frontend/dist
+    # Les dossiers sont montés : un nouveau modèle (build-serving) ou un nouveau build du front
+    # est pris en compte sans reconstruire l'image.
     volumes:
       - ./models:/app/models:ro
       - ./data:/app/data:ro
+      - ./serving:/app/serving:ro
+      - ./frontend/dist:/app/frontend/dist:ro

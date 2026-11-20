@@ -35,6 +35,10 @@ if (config.FRONTEND_DIST / "index.html").exists():
         if (config.FRONTEND_DIST / sub).is_dir():
             app.mount(f"/{sub}", StaticFiles(directory=config.FRONTEND_DIST / sub), name=f"front-{sub}")
 
+# Modèles ONNX + manifest.json issus du registre MLflow (remplace le Hugging Face Hub).
+# check_dir=False : l'API démarre même si build-serving n'a pas encore été lancé.
+app.mount("/models", StaticFiles(directory=config.SERVING_DIR, check_dir=False), name="models")
+
 # Compteurs simples pour le monitoring (consultables sur /stats).
 STATS = {"image_requests": 0, "uncertain": 0, "total_latency_ms": 0.0, "by_region": {}}
 

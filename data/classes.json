@@ -1,0 +1,42 @@
+{
+  "Bubulcus_ibis": {
+    "fr": "Héron garde-boeufs, Pique bœufs",
+    "sci": "Bubulcus ibis"
+  },
+  "Coereba_flaveola": {
+    "fr": "Sucrier à poitrine jaune, Sucrier à ventre jaune, Sucrier falle jaune, Sucrier cage",
+    "sci": "Coereba flaveola"
+  },
+  "Eulampis_jugularis": {
+    "fr": "Colibri madère",
+    "sci": "Eulampis jugularis"
+  },
+  "Loxigilla_noctis": {
+    "fr": "Pèrenoir rougegorge",
+    "sci": "Loxigilla noctis"
+  },
+  "Melanospiza_bicolor": {
+    "fr": "Cici verdinère",
+    "sci": "Melanospiza bicolor"
+  },
+  "Mimus_gilvus": {
+    "fr": "Moqueur des savanes",
+    "sci": "Mimus gilvus"
+  },
+  "Orthorhyncus_cristatus": {
+    "fr": "Campyloptère huppé",
+    "sci": "Orthorhyncus cristatus"
+  },
+  "Quiscalus_lugubris": {
+    "fr": "Quiscale merle",
+    "sci": "Quiscalus lugubris"
+  },
+  "Tyrannus_dominicensis": {
+    "fr": "Tyran gris",
+    "sci": "Tyrannus dominicensis"
+  },
+  "Zenaida_aurita": {
+    "fr": "Tourterelle à queue carrée",
+    "sci": "Zenaida aurita"
+  }
+}

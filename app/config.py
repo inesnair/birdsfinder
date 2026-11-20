@@ -21,6 +21,8 @@ DEFAULT_REGION = os.getenv("DEFAULT_REGION", "antilles")
 
 # Front React compilé (frontend/dist) : servi par l'API s'il existe (démo Colab / local)
 FRONTEND_DIST = Path(os.getenv("FRONTEND_DIST", BASE_DIR / "frontend" / "dist"))
+# Modèles ONNX servis en local (écrits par src/mlflow_registry.py build-serving), exposés sur /models/
+SERVING_DIR = Path(os.getenv("SERVING_DIR", BASE_DIR / "serving"))
 # Origines autorisées à appeler l'API depuis un autre site (ex. "https://inesnair.github.io"), séparées par des virgules
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
 MODEL_VERSION = os.getenv("MODEL_VERSION", "api-locale")
