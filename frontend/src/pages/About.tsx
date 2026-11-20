@@ -18,7 +18,7 @@ export function About() {
         <li>La photo est réduite à 224 × 224 pixels et ses couleurs sont normalisées, exactement comme à l'entraînement.</li>
         <li>
           Un réseau de neurones convolutif (ConvNeXt-Tiny, pré-entraîné sur ImageNet puis spécialisé sur nos oiseaux) calcule
-          un score pour chacune des 31 espèces de la zone.
+          un score pour chacune des espèces de la zone.
         </li>
         <li>Les scores sont convertis en pourcentages ; les trois plus élevés sont affichés.</li>
         <li>Sous 50 %, l'application signale qu'elle n'est pas sûre d'elle.</li>
@@ -58,13 +58,14 @@ export function About() {
       <h2>Les données</h2>
       <p>
         Les photos d'entraînement viennent d'observations iNaturalist de qualité « recherche », publiées sur GBIF sous
-        licences CC0, CC-BY et CC-BY-NC (environ 150 photos par espèce). Les photographes sont crédités dans le jeu de données du
+        licences CC0, CC-BY et CC-BY-NC. Pour les Antilles : 10 espèces, 100 photos chacune, nettoyées avant l'entraînement
+        (photos floues, doublons ou sans oiseau visible écartées). Les photographes sont crédités dans le jeu de données du
         projet. Les modèles sont donc diffusés pour un usage non commercial.
       </p>
 
       <h2>Limites connues</h2>
       <ul>
-        <li>Chaque modèle ne connaît que 31 espèces : face à un autre oiseau, il répond quand même l'espèce la plus proche.</li>
+        <li>Chaque modèle ne connaît que les espèces de sa zone : face à un autre oiseau, il répond quand même l'espèce la plus proche.</li>
         <li>Le pourcentage n'est pas une probabilité calibrée : 90 % ne veut pas dire « juste 9 fois sur 10 ».</li>
         <li>Les scores de test sont un peu optimistes, car des photos d'un même observateur peuvent être à la fois en entraînement et en test.</li>
         <li>Les espèces de chaque zone diffèrent : comparer les deux zones n'isole pas l'effet de la géographie.</li>
