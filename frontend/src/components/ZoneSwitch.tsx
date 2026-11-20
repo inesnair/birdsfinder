@@ -1,6 +1,6 @@
 import { useApp, zoneShortName, zoneTabName } from "../state/app";
 
-/** Choix du modèle : chaque zone a son propre modèle de 31 espèces. */
+/** Choix du modèle : chaque zone a son propre modèle (ses espèces sont listées dans le manifeste). */
 export function ZoneSwitch() {
   const { regions, region, setRegion } = useApp();
   if (regions.length === 0) return null;
