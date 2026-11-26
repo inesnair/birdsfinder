@@ -16,3 +16,9 @@ mlruns/
 .DS_Store
 .cache/
 report.xml
+
+# Registre MLflow local et modèles servis (régénérables)
+mlflow.db
+mlruns/
+serving/
+colab/

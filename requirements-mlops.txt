@@ -1,0 +1,2 @@
+# Registre de modèles local (sur le PC, pas dans Docker)
+mlflow>=2.14
