@@ -21,8 +21,6 @@ DEFAULT_REGION = os.getenv("DEFAULT_REGION", "antilles")
 
 # Front React compilé (frontend/dist) : servi par l'API s'il existe (démo Colab / local)
 FRONTEND_DIST = Path(os.getenv("FRONTEND_DIST", BASE_DIR / "frontend" / "dist"))
-# Modèles ONNX servis en local (écrits par src/mlflow_registry.py build-serving), exposés sur /models/
-SERVING_DIR = Path(os.getenv("SERVING_DIR", BASE_DIR / "serving"))
 # Origines autorisées à appeler l'API depuis un autre site (ex. "https://inesnair.github.io"), séparées par des virgules
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
 MODEL_VERSION = os.getenv("MODEL_VERSION", "api-locale")
@@ -31,6 +29,12 @@ TOP_K = int(os.getenv("TOP_K", "3"))                                   # nb d'es
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.5"))  # en dessous : "pas sûr"
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "10"))
 
+# Mode chat (Bloc 03) : un modèle scikit-learn par zone, entraîné dans le notebook 03
+CHAT_MODEL_PATH = Path(os.getenv("CHAT_MODEL_PATH", BASE_DIR / "models" / "chat_antilles.joblib"))
+CHAT_MODEL_PATH_EUROPE = Path(os.getenv("CHAT_MODEL_PATH_EUROPE", BASE_DIR / "models" / "chat_europe.joblib"))
+CHAT_STOP_THRESHOLD = float(os.getenv("CHAT_STOP_THRESHOLD", "0.8"))  # 1re espèce assez sûre : on s'arrête
+CHAT_MIN_GAIN = float(os.getenv("CHAT_MIN_GAIN", "0.02"))  # gain d'information minimal pour poser une question
+
 
 def region_files(region: str) -> tuple[Path, Path]:
     """(fichier modèle, fichier classes.json) d'une zone. Lu à chaque appel (utile pour les tests)."""
@@ -38,4 +42,13 @@ def region_files(region: str) -> tuple[Path, Path]:
         return MODEL_PATH_EUROPE, CLASSES_JSON_EUROPE
     if region == "antilles":
         return MODEL_PATH, CLASSES_JSON
+    raise KeyError(region)
+
+
+def chat_model_file(region: str) -> Path:
+    """Fichier du modèle de chat d'une zone. Lu à chaque appel (utile pour les tests)."""
+    if region == "europe":
+        return CHAT_MODEL_PATH_EUROPE
+    if region == "antilles":
+        return CHAT_MODEL_PATH
     raise KeyError(region)

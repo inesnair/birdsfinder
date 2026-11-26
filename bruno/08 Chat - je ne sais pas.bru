@@ -1,0 +1,20 @@
+meta {
+  name: 08 Chat - je ne sais pas
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/chat?region=antilles
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "reponses": {
+      "couleur_dessus": "noir",
+      "oeil": "je ne sais pas"
+    }
+  }
+}

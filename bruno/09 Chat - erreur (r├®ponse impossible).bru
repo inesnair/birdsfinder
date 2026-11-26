@@ -1,0 +1,19 @@
+meta {
+  name: 09 Chat - erreur (réponse impossible)
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/chat?region=antilles
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "reponses": {
+      "couleur_dessus": "violet"
+    }
+  }
+}

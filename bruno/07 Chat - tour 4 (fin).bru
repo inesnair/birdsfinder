@@ -1,0 +1,21 @@
+meta {
+  name: 07 Chat - tour 4 (fin)
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/chat?region=antilles
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "reponses": {
+      "activite": "perché (fil ou branche)",
+      "couleur_dessous": "jaune",
+      "taille": "< 10 cm (colibri)"
+    }
+  }
+}

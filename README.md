@@ -3,7 +3,7 @@
 Application d'identification d'oiseaux, avec deux modes d'entrée :
 
 1. **📸 Photo** : un CNN fine-tuné (deep learning) renvoie les espèces les plus probables avec un pourcentage de confiance.
-2. **💬 Chat** *(à venir)* : l'utilisateur décrit l'oiseau, un modèle de ML classique propose des espèces et pose des questions pour affiner.
+2. **💬 Chat** : l'utilisateur décrit l'oiseau (12 questions), un modèle de ML classique propose des espèces et choisit la question la plus utile pour affiner (gain d'information).
 
 Projet réalisé pour la formation Développeur Concepteur IA (RNCP38616, blocs 03 et 05).
 
@@ -68,7 +68,8 @@ Pour obtenir ces fichiers : entraîner le modèle (voir `docs/guide_deep_learnin
 | `GET /health` | État du service (+ présence des fichiers modèles, par zone) |
 | `GET /regions` | Zones proposées (Antilles, Europe) et disponibilité de leur modèle |
 | `POST /predict/image?region=europe` | Photo (multipart `file`) → top-3 espèces, confiance, drapeau `uncertain` (`region` optionnel : `antilles` ou `europe`) |
-| `POST /chat` | Identification par description (**501 pour l'instant**) |
+| `GET /chat/questions?region=antilles` | Les 12 questions du mode chat et leurs réponses possibles |
+| `POST /chat?region=antilles` | Corps `{"reponses": {"couleur_dessus": "noir", ...}}` → top-3 espèces, confiance, question suivante (`termine: true` quand c'est sûr) |
 | `GET /stats` | Compteurs simples : nb de requêtes (total et par zone), prédictions incertaines, latence moyenne |
 
 Exemple :
@@ -122,7 +123,7 @@ docs/           guides
 | Bloc 05 C2 : choix de l'architecture profonde | `reports/` (tableau comparatif à produire) | ⏳ à faire |
 | Bloc 05 C3 : entraînement, loss | `src/train_cnn.py`, courbes dans `reports/` | ⏳ à lancer |
 | Bloc 05 C4 : déploiement MLOps | `src/export_onnx.py` (packaging + contrôle de non-régression), `src/publish_model.py` (versionnement, rollback), `.github/workflows/` (CI + déploiement), `frontend/`, `Dockerfile`, `app/` (`/stats`, logs) | ✅ bêta |
-| Bloc 03 C1–C3 : ML classique | à venir (mode chat) | ⏳ à faire |
+| Bloc 03 C1–C3 : ML classique | `notebooks/03_mode_chat.ipynb`, `src/generate_observations.py`, `src/chat_model.py`, `app/chat.py`, `bruno/` | 🚧 code prêt, entraînement à lancer |
 
 ## Données et licences
 

@@ -1,0 +1,20 @@
+meta {
+  name: 06 Chat - tour 3
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/chat?region=antilles
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "reponses": {
+      "activite": "perché (fil ou branche)",
+      "couleur_dessous": "jaune"
+    }
+  }
+}

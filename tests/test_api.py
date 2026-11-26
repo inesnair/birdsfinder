@@ -148,8 +148,3 @@ def test_manifest_lists_regions_with_models(client, monkeypatch, tmp_path):
     europe = body["regions"]["europe"]
     assert [c["id"] for c in europe["classes"]] == ["Erithacus_rubecula", "Turdus_merula"]  # ordre alphabétique
     assert europe["classes"][0]["sci"] == "Erithacus rubecula"
-
-
-def test_chat_not_implemented_yet(client):
-    response = client.post("/chat", json={"message": "j'ai vu un oiseau bleu"})
-    assert response.status_code == 501

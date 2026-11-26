@@ -5,3 +5,5 @@ pillow>=10.0
 pydantic>=2.0
 httpx>=0.27
 pytest>=8.0
+# Mode chat : pandas pour préparer les réponses (le modèle des tests est factice, sans scikit-learn)
+pandas>=2.0

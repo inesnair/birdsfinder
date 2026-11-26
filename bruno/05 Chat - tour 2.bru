@@ -1,0 +1,19 @@
+meta {
+  name: 05 Chat - tour 2
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/chat?region=antilles
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "reponses": {
+      "activite": "perché (fil ou branche)"
+    }
+  }
+}

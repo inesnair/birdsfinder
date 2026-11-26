@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel
 
+from app import chat as chat_mode
 from app import config, inference
 
 logging.basicConfig(level=logging.INFO)
@@ -35,12 +36,8 @@ if (config.FRONTEND_DIST / "index.html").exists():
         if (config.FRONTEND_DIST / sub).is_dir():
             app.mount(f"/{sub}", StaticFiles(directory=config.FRONTEND_DIST / sub), name=f"front-{sub}")
 
-# Modèles ONNX + manifest.json issus du registre MLflow (remplace le Hugging Face Hub).
-# check_dir=False : l'API démarre même si build-serving n'a pas encore été lancé.
-app.mount("/models", StaticFiles(directory=config.SERVING_DIR, check_dir=False), name="models")
-
 # Compteurs simples pour le monitoring (consultables sur /stats).
-STATS = {"image_requests": 0, "uncertain": 0, "total_latency_ms": 0.0, "by_region": {}}
+STATS = {"image_requests": 0, "uncertain": 0, "total_latency_ms": 0.0, "by_region": {}, "chat_requests": 0}
 
 
 # ---------- Schémas (contrat de l'API) ----------
@@ -59,8 +56,27 @@ class ImagePredictionResponse(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    session_id: str | None = None
+    """Toutes les réponses déjà données (le serveur ne garde rien entre deux tours).
+
+    Clé = attribut (voir GET /chat/questions), valeur = un des choix, ou « je ne sais pas ».
+    """
+    reponses: dict[str, str] = {}
+
+
+class ChatQuestion(BaseModel):
+    attribut: str
+    texte: str
+    choix: list[str]
+
+
+class ChatResponse(BaseModel):
+    region: str
+    predictions: list[SpeciesScore]       # top-3
+    question_suivante: ChatQuestion | None
+    termine: bool
+    nb_reponses: int                       # réponses utiles (hors « je ne sais pas »)
     message: str
+    gains: dict[str, float]                # gain d'information de chaque question encore possible (en bits)
 
 
 # ---------- Dépendances : la zone et son modèle (remplaçables dans les tests) ----------
@@ -79,6 +95,18 @@ def predictor_dependency(region: str = Depends(region_dependency)):
         return inference.get_predictor(region)
     except inference.ModelNotAvailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+def chat_engine_dependency(region: str = Depends(region_dependency)):
+    try:
+        return chat_mode.get_engine(region)
+    except chat_mode.ChatModelNotAvailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+def _question(engine, attribut: str) -> ChatQuestion:
+    return ChatQuestion(attribut=attribut, texte=engine.questions[attribut],
+                        choix=engine.valeurs[attribut] + [chat_mode.JE_NE_SAIS_PAS])
 
 
 # ---------- Routes ----------
@@ -155,6 +183,7 @@ def stats():
         "uncertain_predictions": STATS["uncertain"],
         "avg_latency_ms": round(STATS["total_latency_ms"] / n, 1) if n else None,
         "by_region": STATS["by_region"],
+        "chat_requests": STATS["chat_requests"],
     }
 
 
@@ -203,7 +232,41 @@ async def predict_image(
     )
 
 
-@app.post("/chat")
-def chat(request: ChatRequest):
-    """Use case 2 : identification par description (partie ML classique, Bloc 03). À venir."""
-    raise HTTPException(status_code=501, detail="Le mode chat n'est pas encore implémenté.")
+@app.get("/chat/questions", response_model=list[ChatQuestion])
+def chat_questions(engine=Depends(chat_engine_dependency)):
+    """Les 12 questions du mode chat et leurs réponses possibles."""
+    return [_question(engine, a) for a in engine.attributs]
+
+
+@app.post("/chat", response_model=ChatResponse)
+def chat(
+    request: ChatRequest,
+    region: str = Depends(region_dependency),
+    engine=Depends(chat_engine_dependency),
+):
+    """Use case 2 : identification par description (ML classique, Bloc 03).
+
+    1er appel avec `{"reponses": {}}` : l'API renvoie la question la plus utile à poser.
+    Ensuite, renvoyer toutes les réponses à chaque tour jusqu'à `termine: true`.
+    """
+    try:
+        result = engine.tour(request.reponses)
+    except chat_mode.InvalidAnswer as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    STATS["chat_requests"] += 1
+    top, conf = result.predictions[0]
+    logger.info("chat region=%s reponses=%d top1=%s conf=%.3f question=%s", region, result.nb_reponses,
+                top["id"], conf, result.question)
+    return ChatResponse(
+        region=region,
+        predictions=[
+            SpeciesScore(species_id=e["id"], name_fr=e["fr"], scientific_name=e.get("sci"), confidence=round(p, 4))
+            for e, p in result.predictions[: config.TOP_K]
+        ],
+        question_suivante=_question(engine, result.question) if result.question else None,
+        termine=result.termine,
+        nb_reponses=result.nb_reponses,
+        message=chat_mode.phrase(result),
+        gains=result.gains,
+    )
