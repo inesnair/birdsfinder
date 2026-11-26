@@ -1,0 +1,42 @@
+{
+  "Ardea_cinerea": {
+    "fr": "Héron cendré",
+    "sci": "Ardea cinerea"
+  },
+  "Coloeus_monedula": {
+    "fr": "Choucas des tours",
+    "sci": "Coloeus monedula"
+  },
+  "Corvus_corone": {
+    "fr": "Corneille noire",
+    "sci": "Corvus corone"
+  },
+  "Cyanistes_caeruleus": {
+    "fr": "Mésange bleue",
+    "sci": "Cyanistes caeruleus"
+  },
+  "Erithacus_rubecula": {
+    "fr": "Rouge-gorge familier",
+    "sci": "Erithacus rubecula"
+  },
+  "Fringilla_coelebs": {
+    "fr": "Pinson des arbres",
+    "sci": "Fringilla coelebs"
+  },
+  "Parus_major": {
+    "fr": "Mésange charbonnière",
+    "sci": "Parus major"
+  },
+  "Passer_domesticus": {
+    "fr": "Moineau domestique",
+    "sci": "Passer domesticus"
+  },
+  "Pica_pica": {
+    "fr": "Pie bavarde",
+    "sci": "Pica pica"
+  },
+  "Turdus_merula": {
+    "fr": "Merle noir",
+    "sci": "Turdus merula"
+  }
+}
